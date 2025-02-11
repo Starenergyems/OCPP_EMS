@@ -1,6 +1,8 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
+import redis.asyncio as redis
+import json
 
 try:
     import websockets
@@ -20,8 +22,14 @@ from ocpp.v16 import call_result, call, enums
 
 logging.basicConfig(level=logging.INFO)
 
+# Create a global Redis client.
+redis_client = redis.Redis(host='localhost', port=32769, decode_responses=True)
+
 valid_id_tags = ["A787A3F2"]
 connected_clients = {}  # Dictionary to store connected clients
+
+# charging point 充電樁
+# connector 充電槍
 charger_config = {
     "10768751": {"charge_point_id": "10768751", "connector_ids":[1, 2], "capacity":180}, 
     "10768752": {"charge_point_id": "10768752", "connector_ids":[1, 2], "capacity":360},
@@ -75,6 +83,9 @@ class ChargePoint(cp):
         print(f"  Status: {status}")
         # print(f"  Error Code: {error_code}")
         # print(f"  Additional Info: {kwargs}")
+        
+        await redis_client.execute_command("JSON.SET", f"cp:{self.id}:{connector_id}", "$", json.dumps(status))
+        
         if status == "Preparing":
             asyncio.create_task(send_remote_start_transaction(self, connector_id=connector_id))
         # Return an empty response, as StatusNotification does not require additional fields.
@@ -94,6 +105,8 @@ class ChargePoint(cp):
             print(f"  Timestamp: {timestamp}")
             for sampled_value in sampled_values:
                 print(f"    Sampled Value: {sampled_value}")
+
+        # await redis_client.execute_command("JSON.SET", f"cp:{self.id}:{connector_id}", "$", json.dumps(status))
 
         # Return an empty response as MeterValues do not require a payload.
         return call_result.MeterValues()
