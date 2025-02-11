@@ -1,0 +1,982 @@
+<html>
+  <head>
+    <style>
+      html,
+      body {
+        margin: 0;
+        margin-left: 0.5rem
+      }
+      body {
+        background: #000;
+        color: white;
+        font-family: Arial;
+        /* height: 100vh !important; */
+      }
+      
+      button,
+      input,
+      select {
+        width: 100%;
+        margin-bottom: 5px;
+        cursor: pointer;
+        height: 2rem;
+      }
+
+      button {
+        background: #369;
+        margin: 0.25rem;
+        color: #fff;
+        padding: 4px 12px;
+        border: none;
+        height: 2rem;
+        width: fit-content;
+        
+      }
+
+      ul {
+        background: #000;
+        color: #eee;
+      }
+
+      #red,
+      #green,
+      #blue {
+        min-width: 10px;
+      }
+
+      #red {
+        background-color: red;
+      }
+
+      #green {
+        background-color: green;
+      }
+
+      #blue {
+        background-color: blue;
+      }
+
+      #yellow {
+        background-color: yellow;
+      }
+      .title {
+        color: #27a3ac;
+        text-align: center;
+        animation: changeColor ease;
+        animation-iteration-count: infinite;
+        animation-duration: 4s;
+        animation-fill-mode: both;
+        font-size: 48px;
+        padding: 0;
+        margin: 0;
+      }
+      .subTitle {
+        text-align: center;
+        font-size: large;
+      }
+      @keyframes changeColor {
+        0% {
+          color: rgb(146, 213, 142);
+        }
+
+        50% {
+          color: rgb(133, 184, 222);
+        }
+
+        100% {
+          color: rgb(146, 213, 142);
+        }
+      }
+      .metervalues {
+        display: flex;
+        text-align: center;
+      }
+      .container {
+        display: flex;
+        max-height: 100%;
+      }
+      .console {
+        flex-grow: 1;
+        flex-basis: 0;
+        /* overflow: scroll; */
+        max-height: 100%;
+        /* background-color: cyan; */
+      }
+      .actions {
+        flex-grow: 1;
+        flex-basis: 0;
+        margin: 1.5rem 0px;
+      }
+      .wrapper {
+        max-height: 100%;
+      }
+      .meterTexts {
+        flex-grow: 1;
+        flex-basis: 0;
+        text-align: left;
+      }
+
+      .box-container {
+        padding: 0.5rem 0.5rem;
+        margin: 0.5rem 0.25rem;
+        border: 2px solid #efefef;
+        border-radius: 1.5rem;
+        box-shadow: #efefef50 3px 3px;
+      }
+
+      .form-label-layout {
+        margin-bottom: 0.25rem;
+        border-left: 0.1rem solid #ffffff;
+        padding-left: 0.25rem;
+      }
+
+      .console-container {
+        border: 2px solid #FFA07A;
+        height: 60%;
+        overflow: scroll;
+        /* position: relative; */
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrapper">
+      <h1 class="title">INFINITY</h1>
+      <p class="subTitle">Simple OCPP 1.6 Chargebox Simulator</p>
+      <select style="display: none">
+        <option value="">OCPP-J1.6</option>
+      </select>
+      <div class="container">
+        <div class="actions">
+          <div class="box-container">
+            <h4>Metadata Configuration(基本設定)</h4>
+            <hr/>
+            <label class="form-label-layout">
+              Central Station【中心系統連線資訊：http://主機ip:埠號/充電樁編號】
+            </label>
+            <input
+              id="CP"
+              type="text"
+              placeholder="Id Station"
+              value="ws://localhost:2020/1076875101"
+            />
+            <hr/>
+            <button id="connect">Connect</button>
+          </div>
+
+          <!-- Block: Core Profile Operation -->
+          <div class="box-container">
+            <h4>Actions - Core Profile(事件操作)</h4>
+            <hr/>
+
+            <button id="heartbeat">Heartbeat</button>
+            <hr/>
+
+            <!-- Status Notification -->
+            <div style="display: flex; gap: 0.5rem">
+              <div style="max-width: 50%;">
+                <label class="form-label-layout">Connector Status(充電樁狀態)</label>
+                <select name="ConnectorStatus" id="ConnectorStatus" value="Available">
+                  <option value="Available">Available</option>
+                  <option value="Unavailable">Unavailable</option>
+                  <option value="Faulted">Faulted</option>
+                </select>
+                <label class="form-label-layout">Connector uid(0為充電樁)</label>
+                <input id="CUID" type="text" placeholder="Connector uid" value="0" disabled=true />
+                <button id="status">Status Notification(充電樁)</button>
+              </div>
+              <div>
+                <label class="form-label-layout">Connector Status(充電槍狀態)</label>
+                <select name="ConnectorStatus" id="ConnectorStatus-connector">
+                  <option value="Available">Available</option>
+                  <option value="Preparing">Preparing</option>
+                  <option value="Charging">Charging</option>
+                  <option value="SuspendedEV">SuspendedEV</option>
+                  <option value="SuspendedEVSE">SuspendedEVSE</option>
+                  <option value="Finishing">Finishing</option>
+                  <option value="Reserved">Reserved</option>
+                  <option value="Faulted">Faulted</option>
+                  <option value="Unavailable">Unavailable</option>
+                </select>
+                <!-- <label class="form-label-layout">Connector uid(>=1為充電槍)</label>
+                <input id="CUID-connector" type="text" placeholder="Connector uid" value="1" /> -->
+                <button id="status-connector">Status Notification(充電槍)</button>
+              </div>
+            </div>
+            <hr/>
+
+            <div style="display: flex; gap: 0.75rem">
+              <label class="form-label-layout">Tag【卡號, 十六進位】</label>
+              <a style="color: yellow" 
+                target="_blank"
+                href="https://tools.yeecord.com/zh-tw/base-converter/hex/dec">
+                參考轉換網址
+              </a>
+            </div>
+            <input
+              id="TAG"
+              type="text"
+              placeholder="Tag"
+              value="A787A3F2"
+            />
+            <label class="form-label-layout">TransactionId【充電交易ID, 於交易啟動自動調整】</label>
+            <input
+              id="transactionId"
+              type="text"
+              placeholder="transactionId"
+              value="1"
+            />
+            <label class="form-label-layout">Charging ConnectorId(本次充電, 充電槍號【>=1】)</label>
+            <input id="charging-cuid" type="number" placeholder="Connector uid" value="1" />
+            <button id="send">Authorize</button>
+            <button id="start">Start Transaction</button>
+            <label>充幾分鐘</label>
+            <input
+              id="duration"
+              type="number"
+              placeholder="duration"
+              value="0"
+              style="max-width: 100px;"
+            />
+            <button id="stop">Stop Transaction</button>
+            <button id="data_transfer">Data Tranfer</button>
+            <hr/>
+
+            <!-- MeterValues -->
+            <div>
+              <label>Meter value: electricity【電量(單位: 瓦小時, Kh)】</label>
+              <input
+                id="metervalue"
+                type="text"
+                placeholder="Meter value"
+                value="15000"
+              />
+              <label>Meter value: power【功率(單位: 瓦特, W)】</label>
+              <input
+                id="metervaluePower"
+                type="text"
+                placeholder="Meter value"
+                value="7000"
+              />
+              <label>Meter value: current【電流(單位: 安培, A)】</label>
+              <input
+                id="metervalueCurrnet"
+                type="text"
+                placeholder="Meter value"
+                value="32"
+              />
+              <label>Meter value: voltage【電壓(單位: 伏特, V)】</label>
+              <input
+                id="metervalueVoltage"
+                type="text"
+                placeholder="Meter value"
+                value="220"
+              />
+              <div>
+                <label>傳入格式內容</label>
+                <div style="height: 200px; overflow-y: scroll;">
+                  <pre id="metervalueDisplay"></pre>
+                </div>
+              </div>
+              <button id="mv">Send Meter Values</button>
+
+            </div>
+          </div>
+
+          <!-- Firmware 操作區塊 -->
+          <div class="box-container">
+            <h4>Actions - Firmware Management Profile(事件操作)</h4>
+            <hr/>
+
+            <div style="margin-top: 1rem; margin-bottom: 1rem;">
+              <div>
+                <label class="form-label-layout">listVersion</label>
+              </div>
+              <input
+                id="listVersion"
+                type="number"
+                placeholder="listVersion"
+                value="0"
+              />
+              <label class="form-label-layout">Send Local List Status【test other status return!(Default Accepted)】</label>
+              <select name="SendLocalListStatus" id="SendLocalListStatus">
+                <option value="Accepted">Accepted</option>
+                <option value="Failed">Failed</option>
+                <option value="NotSupported">NotSupported</option>
+                <option value="VersionMismatch">VersionMismatch</option>
+              </select>
+            </div>
+            <hr/>
+
+            <div>
+              <label>Diagnostics Status【診斷報告狀態回報】</label>
+              <select name="DiagnosticsStatus" id="DiagnosticsStatus">
+                <option value="Idle">Idle</option>
+                <option value="Uploaded">Uploaded</option>
+                <option value="UploadFailed">UploadFailed</option>
+                <option value="Uploading">Uploading</option>
+              </select>
+              <button id="Diagnostics-Status-Notification" style="background-color: #27a3ac;">Diagnostics Status Notification</button>
+            </div>
+            <hr/>
+
+            <div>
+              <label>Firmware Status【韌體更新狀態回報】</label>
+              <select name="FirmwareStatus" id="FirmwareStatus">
+                <option value="Downloaded">Downloaded</option>
+                <option value="DownloadFailed">DownloadFailed</option>
+                <option value="Downloading">Downloading</option>
+                <option value="Idle">Idle</option>
+                <option value="InstallationFailed">InstallationFailed</option>
+                <option value="Installing">Installing</option>
+                <option value="Installed">Installed</option>
+              </select>
+              <button id="Firmware-Status-Notification" style="background-color: #27a3ac;">Firmware Status Notification</button>
+            </div>
+          </div>
+        </div>
+        <div class="console">
+          <div>
+            <span class="indicator" id="red">____</span>
+            <span class="indicator" id="green">____</span>
+            <span class="indicator" id="blue">____</span>
+            <span class="indicator" id="yellow">____</span>
+          </div>
+          <!-- 註解區塊, 自定義訊息 -->
+          <!-- <div style="padding: 1rem">
+            <label>message</label>
+            <input
+              id="message-input"
+              type="text"
+              value=""
+            />
+            <button id="cus-send" style="margin-top: 0.75rem">send</button>
+            <pre id="message-preview"></pre>
+          </div> -->
+          <div class="console-container">
+            <ul id="console"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script
+      src="https://code.jquery.com/jquery-3.3.1.min.js"
+      integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+      crossorigin="anonymous"
+    ></script>
+
+    <script>
+      var timesRun = 0;
+
+      var c = 0;
+      var possible =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      var id = randomId();
+      var _websocket = null;
+      var connector_locked = false;
+
+      
+      function randomId() {
+        id = "";
+        for (var i = 0; i < 36; i++) {
+          id += possible.charAt(Math.floor(Math.random() * possible.length));
+        }
+        return id;
+      }
+
+      function wsConnect() {
+        var wsurl = $("select").val();
+        var CP = $("#CP").val();
+
+        if (_websocket) {
+          $("#red").show();
+          _websocket.close(3001);
+        } else {
+          console.log("connect ==>", wsurl + "" + CP);
+          const connectorHeaders = {
+            "Authorization": "StarChargerAdmin",
+          }
+
+          _websocket = new WebSocket(wsurl + "" + CP, ["ocpp1.6", "ocpp1.5"], { connectorHeaders });
+          _websocket.onopen = function (authorizationData) {
+            sessionStorage.setItem("LastAction", "BootNotification");
+            $("#yellow").show();
+            BootNotification();
+
+            $("#connect").text("Disconnect").css("background", "green");
+          };
+
+          _websocket.onmessage = function (msg) {
+            // console.log("msg = ", msg);
+            c++;
+            var ddata = JSON.parse(msg.data);
+            console.log(ddata);
+            if (c == 1) {
+              var hb_interval = handleData(ddata);
+              sessionStorage.setItem("Configuration", hb_interval);
+              startHB(hb_interval * 1000);
+            }
+
+            if (ddata[0] === 3) {
+              la = getLastAction();
+              if (la == "startTransaction") {
+                logMsg("Data exchange successful!");
+                var transactionId = ddata[2].transactionId;
+                $("#transactionId").val(transactionId);
+                logMsg("TransactionId: " + transactionId);
+                console.log("TransactionId: " + JSON.stringify(transactionId));
+                /*  FIXME: 不需要可刪除
+                document.getElementById("ConnectorStatus-connector").value = "Charging";
+                // 觸發按鈕事件
+                document.getElementById("status-connector").dispatchEvent(new Event("click"));
+                */
+              }
+              if (la === "stopTransaction") {
+                /*  FIXME: 不需要可刪除
+                // 調整狀態為結束充電, 觸發按鈕事件
+                document.getElementById("ConnectorStatus-connector").value = "Finishing";
+                document.getElementById("status-connector").dispatchEvent(new Event("click"));
+                */
+              }
+              logMsg("Response: " + JSON.stringify(ddata[2]));
+            } else if (JSON.parse(msg.data)[0] === 4) {
+              logMsg(`
+                Data exchange failed - JSON is not accepted!
+                eventType = ${JSON.parse(msg.data)[2]}
+              `);
+            } else if (JSON.parse(msg.data)[0] === 2) {
+              logMsg(JSON.parse(msg.data)[2]);
+              id = JSON.parse(msg.data)[1];
+              
+              console.group();
+              const now = new Date();
+              const dateTime = `
+                ${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} 
+                ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}
+              `
+              console.log("時間: ", dateTime);
+              console.log("message type ", ddata[2]);
+              console.log("message ", ddata);
+              console.groupEnd();
+
+              switch (ddata[2]) {
+                case "Reset":
+                  //Reset type SOFT, HARD
+                  var ResetS = JSON.stringify([3, id, { status: "Accepted" }]);
+                  console.log("Reset 即將送出");
+                  _websocket.send(ResetS);
+                  location.reload();
+                  break;
+                case "RemoteStopTransaction":
+                  //TransactionID
+                  var remStp = JSON.stringify([3, id, { status: "Accepted" }]);
+                  _websocket.send(remStp);
+
+                  $("#transactionId").val(JSON.parse(msg.data)[3].transactionId);
+                  
+                  // 調整狀態為結束充電, 觸發按鈕事件
+                  triggerStatus("Finishing");
+                  stopTransaction();
+                  
+                  $(".indicator").hide();
+                  $("#yellow").show();
+                  break;
+                case "RemoteStartTransaction":
+                  //Need to get idTag, connectorId (map - ddata[3])
+                  $("#TAG").val(ddata[3].idTag);
+                  var remStrt = JSON.stringify([3, id, { status: "Accepted" }]);
+                  console.log("RemoteStartTransaction");
+                  console.log(remStrt);
+                  _websocket.send(remStrt);
+                  // 調整狀態為充電中, 觸發按鈕事件
+                  console.log("change to charging status now");
+                  triggerStatus("Charging");
+                  startTransaction();
+
+                  break;
+                case "UnlockConnector": /////////ERROR!!!!!!!!
+                  //connectorId
+                  var UC = JSON.stringify([3, id, { status: "Accepted" }]);
+                  console.log("解鎖即將送出");
+                  _websocket.send(UC);
+                  // connector_locked = false;
+                  // $('.indicator').hide();
+                  //$('#yellow').show();
+                  //logMsg("Connector status changed to: "+connector_locked);
+                  break;
+                case "TriggerMessage":
+                  // Called by CPMS asking ChargePoint to execute the instruction
+                  // Implemented for MeterValues
+
+                  switch (ddata[3].requestedMessage) {
+                    case "MeterValues" :
+                      var remStrt = JSON.stringify([3, id, { status: "Accepted" }]);
+                      _websocket.send(remStrt);
+                      send_meterValue();
+                    break;
+                    default : 
+                      var error = JSON.stringify([4, id]);
+                      _websocket.send(error);
+                  }
+
+                  break;
+                case "SetChargingProfile":
+                  var SCP = JSON.stringify([3, id, { status: "Accepted" }]);
+                  console.log(SCP)
+                  console.log(id);
+                  console.log("修改充電設定即將送出");
+                  _websocket.send(SCP);
+                  console.log("end")
+                  break;
+                case "ClearChargingProfile":
+                  var CCP = JSON.stringify([3, id, { status: "Accepted" }]);
+                  console.log(_websocket);
+                  _websocket.send(CCP);
+                  _websocket.send(CCP);
+                  _websocket.send(CCP);
+                  _websocket.send(CCP);
+                  _websocket.send(CCP);
+                  break;
+                
+                // 新增 Local Auth List Management & Firmware Management 相關 CMS 事件接收後回應
+                // Local Auth List Management
+                case "GetLocalListVersion":
+                  var GLLV = JSON.stringify([3, id, { listVersion: 1 }]);
+                  _websocket.send(GLLV);
+                case "SendLocalList":
+                  var SLL = JSON.stringify([3, id, { status: $("#SendLocalListStatus").val() }]);
+                  _websocket.send(SLL);
+                // Firmware Management
+                case "GetDiagnostics":
+                  var GD = JSON.stringify([3, id, { fileName: "abc.log" }]);
+                  _websocket.send(GD);
+                case "UpdateFireware":
+                  var UF = JSON.stringify([3, id, {  }]);
+                  _websocket.send(UF);
+                default:
+                  var error = JSON.stringify([4, id]);
+                  _websocket.send(error);
+                  break;
+              }
+            }
+          };
+
+          _websocket.onclose = function (evt) {
+            $("#connect").text("Connect").css("background", "#369");
+            if (evt.code == 3001) {
+              logMsg("ws closed");
+              _websocket = null;
+            } else {
+              logMsg("ws connection error: " + evt.code);
+              $("#console").html("");
+              _websocket = null;
+              wsConnect();
+            }
+          };
+
+          _websocket.onerror = function (evt) {
+            if (_websocket.readyState == 1) {
+              $("#red").show();
+              logMsg("ws normal error: " + evt.type);
+            }
+          };
+        }
+      }
+
+      function logMsg(err) {
+        console.log(err);
+        $("#console").append("<li>" + err + "</li>");
+      }
+
+      function triggerStatus(status) { 
+          // 調整狀態, 並觸發按鈕事件
+          document.getElementById("ConnectorStatus-connector").value = status;
+          document.getElementById("status-connector").dispatchEvent(new Event("click"));
+       }
+
+      function Authorize() {
+        sessionStorage.setItem("LastAction", "Authorize");
+        var Auth = JSON.stringify([
+          2,
+          id,
+          "Authorize",
+          { idTag: $("#TAG").val() },
+        ]);
+        _websocket.send(Auth);
+        // 開啟調整充電槍號
+        $("#charging-cuid").attr("disabled", false);
+      }
+
+      function startTransaction() {
+        sessionStorage.setItem("LastAction", "startTransaction");
+        $(".indicator").hide();
+        $("#green").show();
+        connector_locked = true;
+        logMsg("Connector status changed to: " + connector_locked);
+        var connectorId = parseInt($("#charging-cuid").val());
+        console.log("connectorId", connectorId);
+        var strtT = JSON.stringify([
+          2, 
+          id,
+          "StartTransaction",
+          {
+            connectorId: connectorId,
+            idTag: $("#TAG").val(),
+            timestamp: new Date().toISOString(),
+            meterStart: parseInt($("#metervalue").val()),
+            // reservationId: 0,
+          },
+        ]);
+        console.log("start strtT = ", strtT);
+        _websocket.send(strtT);
+        // 鎖住調整充電槍號
+        $("#charging-cuid").attr("disabled", true);
+      }
+
+      function stopTransaction() {
+        sessionStorage.setItem("LastAction", "stopTransaction");
+        $(".indicator").hide();
+        connector_locked = false;
+        logMsg("Connector status changed to: " + connector_locked);
+        $("#yellow").show();
+
+        // 新增功能: 調整充電時間
+        let now = new Date();
+        const duraionMin = $("#duration").val();
+        console.log("duraionMin = ", duraionMin);
+        let duration = parseInt(duraionMin, 10) * 60 * 1000;
+        let stopTime = new Date(now.getTime() + duration);
+        console.log("stopTime = ", stopTime);
+
+        var stpT = JSON.stringify([
+          2,
+          id,
+          "StopTransaction",
+          {
+            transactionId: Number($("#transactionId").val()),
+            idTag: $("#TAG").val(),
+            timestamp: stopTime.toISOString(),
+            meterStop: parseInt($("#metervalue").val()),
+          },
+        ]);
+        _websocket.send(stpT);
+        // 開啟調整充電槍號
+        $("#charging-cuid").attr("disabled", false);
+      }
+
+      function handleData(data, request = false) {
+        var lastAction = getLastAction();
+        if ((lastAction = "BootNotification")) {
+          data = data[2];
+          heartbeat_interval = "40";
+          return heartbeat_interval;
+        } else if ((lastAction = "StartTransaction")) {
+          return "StartTransaction";
+        } else if (1 == 2) {
+          alert("else");
+        }
+      }
+
+      function getLastAction() {
+        var LastAction = sessionStorage.getItem("LastAction");
+        return LastAction;
+      }
+
+      function BootNotification() {
+        var BN = JSON.stringify([
+          2,
+          id,
+          "BootNotification",
+          {
+            chargePointVendor: "AVT-Company",
+            chargePointModel: "AVT-Express",
+            chargePointSerialNumber: "avt.001.13.1",
+            chargeBoxSerialNumber: "avt.001.13.1.01",
+            firmwareVersion: "0.9.87",
+            iccid: "",
+            imsi: "",
+            meterType: "AVT NQC-ACDC",
+            meterSerialNumber: "avt.001.13.1.01",
+          },
+        ]);
+
+        logMsg("ws connected");
+
+        _websocket.send(BN);
+      }
+
+      function startHB(interval) {
+        logMsg("Setting heartbeat interval to " + interval);
+        setInterval(send_heartbeat, interval);
+      }
+
+      function send_heartbeat() {
+        sessionStorage.setItem("LastAction", "Heartbeat");
+        var HB = JSON.stringify([2, id, "Heartbeat", {}]);
+        _websocket.send(HB);
+      }
+
+      function send_meterValue() {
+        console.log("mv");
+
+        sessionStorage.setItem("LastAction", "MeterValues");
+        var MV = JSON.stringify([
+          2, 
+          id,
+          "MeterValues",
+          JSON.parse($("#metervalueDisplay").text().trim())
+        ]);
+
+        _websocket.send(MV);
+      }
+
+      $(document).ready(function () {
+
+        // 定期更新顯示
+        const meterValueInterval = setInterval(() => {
+          $("#metervalueDisplay").text(`
+            {
+                "connectorId": ${$("#charging-cuid").val()},
+                "transactionId": ${$("#transactionId").val()},
+                "meterValue": [
+                    {
+                        "timestamp":  "${new Date().toISOString()}",
+                        "sampledValue": [
+                            {
+                                "value": "${$("#metervalueVoltage").val()}",
+                                "context": "Transaction.Begin",
+                                "format": "Raw",
+                                "measurand": "Voltage",
+                                "phase": "L1",
+                                "location": "Outlet",
+                                "unit": "V"
+                            },
+                            {
+                                "value": "${$("#metervalueCurrnet").val()}",
+                                "context": "Transaction.Begin",
+                                "format": "Raw",
+                                "measurand": "Current.Import",
+                                "phase": "L1",
+                                "location": "Outlet",
+                                "unit": "A"
+                            },
+                            {
+                                "value": "${$("#metervaluePower").val()}",
+                                "context": "Transaction.Begin",
+                                "format": "Raw",
+                                "measurand": "Power.Active.Import",
+                                "phase": "L1",
+                                "location": "Outlet",
+                                "unit": "W"
+                            },
+                            {
+                                "value": "38",
+                                "context": "Transaction.Begin",
+                                "format": "Raw",
+                                "measurand": "Temperature",
+                                "phase": "L1",
+                                "location": "Body",
+                                "unit": "Celsius"
+                            },
+                            {
+                                "value": "0",
+                                "context": "Transaction.Begin",
+                                "format": "Raw",
+                                "measurand": "SoC",
+                                "phase": "L1",
+                                "location": "EV",
+                                "unit": "Percent"
+                            },
+                            {
+                                "value": "${$("#metervaluePower").val()}",
+                                "context": "Transaction.Begin",
+                                "format": "Raw",
+                                "measurand": "Power.Offered",
+                                "phase": "L1",
+                                "location": "Outlet",
+                                "unit": "W"
+                            },
+                            {
+                                "value": "${$("#metervalue").val()}",
+                                "context": "Transaction.Begin",
+                                "format": "Raw",
+                                "measurand": "Energy.Active.Import.Register",
+                                "phase": "L1",
+                                "location": "Outlet",
+                                "unit": "Wh"
+                            }
+                        ]
+                    }
+                ]
+            }
+          `)
+        }, 2000);
+
+        $(".indicator").hide();
+        $("#red").show();
+
+        //bind controls
+        $("#connect").click(function () {
+          $(".indicator").hide();
+          $("#console").html("");
+          wsConnect();
+        });
+
+        $("#send").click(function () {
+          Authorize();
+        });
+
+        $("#start").click(function () {
+          // 調整狀態為充電中, 觸發按鈕事件
+          triggerStatus("Charging");
+          startTransaction();
+        });
+
+        $("#stop").click(function () {
+          // 調整狀態為結束充電, 觸發按鈕事件
+          triggerStatus("Finishing");
+          stopTransaction();
+        });
+        $("#mv").click(function () {
+          send_meterValue();
+        });
+        $("#mvp").click(function () {
+          var i = Number($("#meterInterval").val());
+          var timesRun = 0;
+          var interval = setInterval(function () {
+            timesRun += 1;
+            var val = Number($("#metervalue").val());
+            var incrementvalue = Number($("#meterIncrement").val());
+            var counter = Number($("#meterSendTimes").val());
+            var Myelement = document.getElementById("metervalue");
+            console.log(Myelement.value);
+            Myelement.value = (val + incrementvalue).toString();;
+            console.log("mvp", val, incrementvalue, interval, counter);
+            if (timesRun === counter) {
+              timesRun = 0;
+              clearInterval(interval);
+            }
+            //do whatever here..
+            send_meterValue();
+          }, i);
+        });
+
+        $("#heartbeat").click(function () {
+          send_heartbeat();
+        });
+
+        $("#status").click(function () {
+          sessionStorage.setItem("LastAction", "StatusNotification");
+          var SN = JSON.stringify([
+            2,
+            id,
+            "StatusNotification",
+            {
+              connectorId: parseInt($("#CUID").val()),
+              status: $("#ConnectorStatus").val(),
+              errorCode: "NoError",
+              info: "",
+              timestamp: new Date().toISOString(),
+              vendorId: "",
+              vendorErrorCode: "",
+            },
+          ]);
+          console.log(`charger status SN = ${SN}`);
+          _websocket.send(SN);
+        });
+
+        $("#status-connector").click(function () {
+          sessionStorage.setItem("LastAction", "StatusNotification");
+          var SN = JSON.stringify([
+            2,
+            id,
+            "StatusNotification",
+            {
+              connectorId: parseInt($("#charging-cuid").val()),
+              status: $("#ConnectorStatus-connector").val(),
+              errorCode: "NoError",
+              info: "",
+              timestamp: new Date().toISOString(),
+              vendorId: "",
+              vendorErrorCode: "",
+            },
+          ]);
+          console.log(`connecotr status SN = ${SN}`);
+          _websocket.send(SN);
+        });
+
+        $("#data_transfer").click(function () {
+          sessionStorage.setItem("LastAction", "DataTransfer");
+          var DT = JSON.stringify([
+            2,
+            id,
+            "DataTransfer",
+            {
+              vendorId: "rus.avt.cp",
+              messageId: "GetChargeInstruction",
+              data: "",
+            },
+          ]);
+          _websocket.send(DT);
+        });
+
+        // hsiwei{5/35}:新增韌體相關按鈕監聽事件
+        $("#Diagnostics-Status-Notification").click(function() {
+          sessionStorage.setItem("LastAction", "DiagnosticsStatusNotification");
+          var DT = JSON.stringify([
+            2,
+            id,
+            "DiagnosticsStatusNotification",
+            {
+              status: $("#DiagnosticsStatus").val()
+            },
+          ]);
+          _websocket.send(DT);
+        });
+
+        // hsiwei{5/35}:新增韌體相關按鈕監聽事件
+        $("#Firmware-Status-Notification").click(function() {
+          sessionStorage.setItem("LastAction", "FirmwareStatusNotification");
+          var DT = JSON.stringify([
+            2,
+            id,
+            "FirmwareStatusNotification",
+            {
+              status: $("#FirmwareStatus").val()
+            },
+          ]);
+          _websocket.send(DT);
+        });
+
+        // hsiwei{3/14}:新增自定義測試用送出訊息按鈕
+        $("#cus-send").click(function() {
+          var message = $("#message-input").val();
+          console.log("message = ", message);
+
+          // 送出訊息
+          _websocket.send(message.trim());
+          alert("送出訊息");
+        });
+
+        // hsiwei{3/14}:修改input內容連動顯示內容
+        $("#message-input").change(function(e) {
+          var message = $(this).val();
+          console.log("message = ", message);
+          try {
+            var json = JSON.parse(message);
+            $("#message-preview").text(json);
+          } catch (e) {
+            console.error("error = ", e);
+            $("#message-preview").text(message);
+          }
+        })
+
+        $("#connect").on("change", function () {
+          if (_websocket) {
+            _websocket.close(3001);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
