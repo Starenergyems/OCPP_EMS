@@ -51,6 +51,12 @@ ChargePointStatus_lst = [status.value for status in enums.ChargePointStatus]
 for index in range(len(ChargePointStatus_lst)):
     cp_status_dict[ChargePointStatus_lst[index]] = index
 # print(cp_status_dict)
+    
+cp_error_dict = {}
+ChargePointErrorCode_lst = [status.value for status in enums.ChargePointErrorCode]
+for index in range(len(ChargePointErrorCode_lst)):
+    cp_error_dict[ChargePointErrorCode_lst[index]] = index
+# print(cp_error_dict)
 
 async def add_to_redis_ts_keys(resource, id):
     r = redis_client
@@ -69,9 +75,9 @@ async def add_to_redis_ts_keys(resource, id):
                 # print(key_name)
                 # print(labels)
                 if not (await r.exists(key_name)):
-                    await ts.create(key_name, retention_msecs=retention_time, labels=labels)
+                    await ts.create(key_name, retention_msecs=retention_time, labels=labels, duplicate_policy="LAST")
                 if (await r.exists(key_name)):
-                    await ts.alter(key_name, retention_msecs=retention_time, labels=labels)
+                    await ts.alter(key_name, retention_msecs=retention_time, labels=labels, duplicate_policy="LAST")
                 # redis_timeseries_key_set.enqueue(key_name)
         else:
             pass
@@ -127,7 +133,9 @@ class ChargePoint(cp):
         
         now_timestamp = int(datetime.now().timestamp())
         status_code = cp_status_dict.get(status, -1)
+        error_code_ts = cp_error_dict.get(error_code, -1)
         await redis_client.ts().add(f"charger:{self.id}_{connector_id}:status", now_timestamp, status_code)
+        await redis_client.ts().add(f"charger:{self.id}_{connector_id}:alert:x", now_timestamp, error_code_ts)
         
         if status == "Preparing":
             asyncio.create_task(send_remote_start_transaction(self, connector_id=connector_id))
