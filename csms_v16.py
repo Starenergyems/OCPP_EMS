@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import redis.asyncio as redis
 import json
 
@@ -29,9 +29,9 @@ redis_ts_keys = {
     "charger" : {
         "id":[], 
         "tag":[
-            "kw", "status", "voltage", "current", "frequency", "alert:x", "alert:y", "alert:z",
+            "power:L1", "status", "voltage:L1", "current:L1", "temperature:L1", "soc", "energy", "alert:x", "alert:y", "alert:z",
             # write
-            "set:kw"
+            "set:power"
             ], 
         "location": "demo"},
 }
@@ -150,14 +150,41 @@ class ChargePoint(cp):
         print(f"  Transaction ID: {transaction_id}")
         print(f"  Meter Values: {meter_value}")
 
-        for value in meter_value:
-            timestamp = value["timestamp"]
-            sampled_values = value["sampled_value"]
-            print(f"  Timestamp: {timestamp}")
-            for sampled_value in sampled_values:
-                print(f"    Sampled Value: {sampled_value}")
+        pipeline_data = []  # Stores bulk insert data
+        for entry in meter_value:
+            # Convert timestamp to milliseconds
+            dt = datetime.strptime(entry['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ")
+            meter_timestamp = int(dt.replace(tzinfo=timezone.utc).timestamp())
 
-        # await redis_client.execute_command("JSON.SET", f"cp:{self.id}:{connector_id}", "$", json.dumps(status))
+            for sample in entry['sampled_value']:
+                if sample['measurand'] == "Voltage":
+                    measurand = "voltage"
+                elif sample['measurand'] == "Current.Import":
+                    measurand = "current"
+                elif sample['measurand'] == "Power.Active.Import":
+                    measurand = "power"
+                elif sample['measurand'] == "Temperature":
+                    measurand = "temperature"
+                elif sample['measurand'] == "SoC":
+                    measurand = "soc"
+                elif sample['measurand'] == "Energy.Active.Import.Register":
+                    measurand = "energy"
+                else:
+                    measurand = None
+                
+                if measurand:
+                    phase = sample['phase']
+                    key = f"charger:{self.id}_{connector_id}:{measurand}:{phase}"
+                    value = float(sample['value'])  # Convert to numeric
+
+                    # Insert data into RedisTimeSeries
+                    # await redis_client.ts().add(key, meter_timestamp, value)
+                    pipeline_data.append((key, meter_timestamp, value))
+        
+        if pipeline_data:
+            # Execute TS.MADD in one call
+            print(pipeline_data)
+            await redis_client.ts().madd(pipeline_data)
 
         # Return an empty response as MeterValues do not require a payload.
         return call_result.MeterValues()
@@ -462,6 +489,8 @@ async def site_charging_profile_update():
         await asyncio.sleep(30)
 
 async def main():
+    await redis_client.flushdb()
+
     server = await websockets.serve(
         on_connect, "0.0.0.0", 9000, subprotocols=["ocpp1.6"]
     )
