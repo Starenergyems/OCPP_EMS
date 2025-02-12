@@ -36,6 +36,22 @@ redis_ts_keys = {
         "location": "demo"},
 }
 
+valid_id_tags = ["A787A3F2"]
+connected_clients = {}  # Dictionary to store connected clients
+
+# charging point 充電樁
+# connector 充電槍
+charger_config = {
+    "10768751": {"charge_point_id": "10768751", "connector_ids":[1, 2], "capacity":180}, 
+    "10768752": {"charge_point_id": "10768752", "connector_ids":[1, 2], "capacity":360},
+    }
+
+cp_status_dict = {}
+ChargePointStatus_lst = [status.value for status in enums.ChargePointStatus]
+for index in range(len(ChargePointStatus_lst)):
+    cp_status_dict[ChargePointStatus_lst[index]] = index
+# print(cp_status_dict)
+
 async def add_to_redis_ts_keys(resource, id):
     r = redis_client
     ts = redis_client.ts()
@@ -59,16 +75,6 @@ async def add_to_redis_ts_keys(resource, id):
                 # redis_timeseries_key_set.enqueue(key_name)
         else:
             pass
-
-valid_id_tags = ["A787A3F2"]
-connected_clients = {}  # Dictionary to store connected clients
-
-# charging point 充電樁
-# connector 充電槍
-charger_config = {
-    "10768751": {"charge_point_id": "10768751", "connector_ids":[1, 2], "capacity":180}, 
-    "10768752": {"charge_point_id": "10768752", "connector_ids":[1, 2], "capacity":360},
-    }
 
 
 class ChargePoint(cp):
@@ -119,7 +125,9 @@ class ChargePoint(cp):
         # print(f"  Error Code: {error_code}")
         # print(f"  Additional Info: {kwargs}")
         
-        await redis_client.execute_command("JSON.SET", f"cp:{self.id}:{connector_id}", "$", json.dumps(status))
+        now_timestamp = int(datetime.now().timestamp())
+        status_code = cp_status_dict.get(status, -1)
+        await redis_client.ts().add(f"charger:{self.id}_{connector_id}:status", now_timestamp, status_code)
         
         if status == "Preparing":
             asyncio.create_task(send_remote_start_transaction(self, connector_id=connector_id))
