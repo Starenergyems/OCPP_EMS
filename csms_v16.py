@@ -25,6 +25,41 @@ logging.basicConfig(level=logging.INFO)
 # Create a global Redis client.
 redis_client = redis.Redis(host='localhost', port=32769, decode_responses=True)
 
+redis_ts_keys = {
+    "charger" : {
+        "id":[], 
+        "tag":[
+            "kw", "status", "voltage", "current", "frequency", "alert:x", "alert:y", "alert:z",
+            # write
+            "set:kw"
+            ], 
+        "location": "demo"},
+}
+
+async def add_to_redis_ts_keys(resource, id):
+    r = redis_client
+    ts = redis_client.ts()
+    retention_time = 60 * 60 * 24 * (100) # seconds
+
+    for _key, _value in redis_ts_keys.items():
+        if _key == resource:
+            for _tag in _value["tag"]:
+                key_name = f"{_key}:{id}:{_tag}"
+                if "alert" in _tag:
+                    labels = {"type":_key, "id":id, "tag":_tag.split(':')[0], "location":_value["location"]}
+                    # redis_json_alert_key_set.enqueue(f"alert:{_key}:{id}:{_tag.split(':')[-1]}")
+                else:
+                    labels = {"type":_key, "id":id, "tag":_tag, "location":_value["location"]}
+                # print(key_name)
+                # print(labels)
+                if not (await r.exists(key_name)):
+                    await ts.create(key_name, retention_msecs=retention_time, labels=labels)
+                if (await r.exists(key_name)):
+                    await ts.alter(key_name, retention_msecs=retention_time, labels=labels)
+                # redis_timeseries_key_set.enqueue(key_name)
+        else:
+            pass
+
 valid_id_tags = ["A787A3F2"]
 connected_clients = {}  # Dictionary to store connected clients
 
@@ -279,6 +314,9 @@ async def on_connect(websocket):
     cp = ChargePoint(charge_point_id, websocket)
     logging.info(f"Charge point {charge_point_id} connected.")
     
+    for connector_id in charger_config[charge_point_id]["connector_ids"]:
+        await add_to_redis_ts_keys("charger", f"{charge_point_id}_{connector_id}")
+    logging.info(f"Charge point {charge_point_id} redis ts keys creation.")
     # Create a stop event to manage task cancellation
     # stop_event = asyncio.Event()
     # update_task = asyncio.create_task(single_charging_profile_update(cp, stop_event))
